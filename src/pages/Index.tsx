@@ -1,12 +1,51 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import { mockMedicalCenters } from '@/data/mockData';
+import MapView from '@/components/MapView';
+import DashboardView from '@/components/DashboardView';
+import TableView from '@/components/TableView';
+import ThemeToggle from '@/components/ThemeToggle';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Activity } from 'lucide-react';
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState('map');
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Activity className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-2xl font-bold">MedStock Crisis Manager</h1>
+              <p className="text-sm text-muted-foreground">Ministry of Health - Logistics Tracking</p>
+            </div>
+          </div>
+          <ThemeToggle />
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full max-w-md grid-cols-3">
+            <TabsTrigger value="map">Map View</TabsTrigger>
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="table">Table View</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="map" className="h-[calc(100vh-200px)]">
+            <MapView centers={mockMedicalCenters} />
+          </TabsContent>
+
+          <TabsContent value="dashboard">
+            <DashboardView centers={mockMedicalCenters} />
+          </TabsContent>
+
+          <TabsContent value="table">
+            <TableView centers={mockMedicalCenters} />
+          </TabsContent>
+        </Tabs>
+      </main>
     </div>
   );
 };
