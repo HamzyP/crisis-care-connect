@@ -116,14 +116,24 @@ const TableView = ({ centers }: TableViewProps) => {
                   <ArrowUpDown className="h-4 w-4" />
                 </div>
               </TableHead>
-              {Object.entries(RESOURCE_NAMES).map(([key, name]) => (
-                <TableHead key={key} className="cursor-pointer" onClick={() => toggleSort(key as SortField)}>
-                  <div className="flex items-center gap-2">
-                    {name}
-                    <ArrowUpDown className="h-4 w-4" />
-                  </div>
-                </TableHead>
-              ))}
+              {resourceFilter === 'all' 
+                ? Object.entries(RESOURCE_NAMES).map(([key, name]) => (
+                    <TableHead key={key} className="cursor-pointer" onClick={() => toggleSort(key as SortField)}>
+                      <div className="flex items-center gap-2">
+                        {name}
+                        <ArrowUpDown className="h-4 w-4" />
+                      </div>
+                    </TableHead>
+                  ))
+                : resourceFilter in RESOURCE_NAMES && (
+                    <TableHead className="cursor-pointer" onClick={() => toggleSort(resourceFilter as SortField)}>
+                      <div className="flex items-center gap-2">
+                        {RESOURCE_NAMES[resourceFilter as keyof typeof RESOURCE_NAMES]}
+                        <ArrowUpDown className="h-4 w-4" />
+                      </div>
+                    </TableHead>
+                  )
+              }
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -140,9 +150,16 @@ const TableView = ({ centers }: TableViewProps) => {
                     {center.status}
                   </Badge>
                 </TableCell>
-                {Object.entries(center.resources).map(([key, value]) => (
-                  <TableCell key={key}>{value}</TableCell>
-                ))}
+                {resourceFilter === 'all'
+                  ? Object.entries(center.resources).map(([key, value]) => (
+                      <TableCell key={key}>{value}</TableCell>
+                    ))
+                  : resourceFilter in center.resources && (
+                      <TableCell key={resourceFilter}>
+                        {center.resources[resourceFilter as keyof typeof center.resources]}
+                      </TableCell>
+                    )
+                }
               </TableRow>
             ))}
           </TableBody>
