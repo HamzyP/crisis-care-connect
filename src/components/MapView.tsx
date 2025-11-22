@@ -16,7 +16,7 @@ const MapView = ({ centers }: MapViewProps) => {
   const navigate = useNavigate();
 
   return (
-    <div className="h-full w-full rounded-lg overflow-hidden border border-border bg-muted p-8">
+    <div className="h-full w-full rounded-lg overflow-hidden border border-border bg-background p-8">
       <div className="relative w-full h-full bg-card rounded-lg p-4">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-full overflow-auto">
           {centers.map((center) => (
