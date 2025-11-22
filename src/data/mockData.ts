@@ -1,4 +1,4 @@
-import { MedicalCenter, RESOURCE_RATIOS, ResourceLevel } from '@/types/medical';
+import { MedicalCenter, RESOURCE_RATIOS, ResourceLevel, DeliveryTracking, PastDelivery, getResourceStatus } from '@/types/medical';
 
 const calculateStatus = (center: Omit<MedicalCenter, 'status'>): MedicalCenter['status'] => {
   const required = center.maxPatientsCapacity;
@@ -17,6 +17,89 @@ const calculateStatus = (center: Omit<MedicalCenter, 'status'>): MedicalCenter['
   return 'good';
 };
 
+// Helper function to generate realistic mixed resource levels
+// Creates scenarios where hospitals have varying resource statuses
+const generateRealisticResources = (
+  capacity: number,
+  scenario: 'critical' | 'warning' | 'good' | 'mixed'
+): ResourceLevel => {
+  const ratios = RESOURCE_RATIOS;
+  
+  // Base required amounts
+  const required = {
+    insulin: capacity * ratios.insulin,
+    antibiotics: capacity * ratios.antibiotics,
+    anaesthesia: capacity * ratios.anaesthesia,
+    o2Tanks: capacity * ratios.o2Tanks,
+    ivFluids: capacity * ratios.ivFluids,
+  };
+  
+  // Generate resources based on scenario
+  const getResourceValue = (key: keyof typeof ratios, targetStatus: 'critical' | 'warning' | 'good') => {
+    const needed = required[key];
+    let percentage: number;
+    
+    if (targetStatus === 'critical') {
+      percentage = 15 + Math.random() * 15; // 15-30%
+    } else if (targetStatus === 'warning') {
+      percentage = 30 + Math.random() * 40; // 30-70%
+    } else {
+      percentage = 70 + Math.random() * 30; // 70-100%
+    }
+    
+    return Math.floor(needed * (percentage / 100));
+  };
+  
+  if (scenario === 'critical') {
+    // All critical
+    return {
+      insulin: getResourceValue('insulin', 'critical'),
+      antibiotics: getResourceValue('antibiotics', 'critical'),
+      anaesthesia: getResourceValue('anaesthesia', 'critical'),
+      o2Tanks: getResourceValue('o2Tanks', 'critical'),
+      ivFluids: getResourceValue('ivFluids', 'critical'),
+    };
+  } else if (scenario === 'warning') {
+    // All warning
+    return {
+      insulin: getResourceValue('insulin', 'warning'),
+      antibiotics: getResourceValue('antibiotics', 'warning'),
+      anaesthesia: getResourceValue('anaesthesia', 'warning'),
+      o2Tanks: getResourceValue('o2Tanks', 'warning'),
+      ivFluids: getResourceValue('ivFluids', 'warning'),
+    };
+  } else if (scenario === 'good') {
+    // All good
+    return {
+      insulin: getResourceValue('insulin', 'good'),
+      antibiotics: getResourceValue('antibiotics', 'good'),
+      anaesthesia: getResourceValue('anaesthesia', 'good'),
+      o2Tanks: getResourceValue('o2Tanks', 'good'),
+      ivFluids: getResourceValue('ivFluids', 'good'),
+    };
+  } else {
+    // Mixed - realistic scenario where some resources are low, others are fine
+    // Typically 1-2 critical, 1-2 warning, rest good
+    const statuses: Array<'critical' | 'warning' | 'good'> = [
+      'critical',
+      'critical',
+      'warning',
+      'warning',
+      'good',
+    ];
+    // Shuffle for variety
+    const shuffled = statuses.sort(() => Math.random() - 0.5);
+    
+    return {
+      insulin: getResourceValue('insulin', shuffled[0]),
+      antibiotics: getResourceValue('antibiotics', shuffled[1]),
+      anaesthesia: getResourceValue('anaesthesia', shuffled[2]),
+      o2Tanks: getResourceValue('o2Tanks', shuffled[3]),
+      ivFluids: getResourceValue('ivFluids', shuffled[4]),
+    };
+  }
+};
+
 const rawCenters: Omit<MedicalCenter, 'status'>[] = [
   {
     id: '1',
@@ -24,13 +107,7 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     location: { lat: 31.5017, lng: 34.4668 },
     maxPatientsCapacity: 150,
     currentPatients: 142,
-    resources: {
-      insulin: 180,
-      antibiotics: 250,
-      anaesthesia: 90,
-      o2Tanks: 280,
-      ivFluids: 420,
-    },
+    resources: generateRealisticResources(150, 'mixed'), // Mixed - some good, some critical
   },
   {
     id: '2',
@@ -38,13 +115,7 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     location: { lat: 31.3889, lng: 34.3686 },
     maxPatientsCapacity: 120,
     currentPatients: 98,
-    resources: {
-      insulin: 40,
-      antibiotics: 80,
-      anaesthesia: 30,
-      o2Tanks: 85,
-      ivFluids: 150,
-    },
+    resources: generateRealisticResources(120, 'mixed'), // Mixed - insulin critical, others vary
   },
   {
     id: '3',
@@ -52,13 +123,7 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     location: { lat: 31.3547, lng: 34.2969 },
     maxPatientsCapacity: 200,
     currentPatients: 187,
-    resources: {
-      insulin: 320,
-      antibiotics: 420,
-      anaesthesia: 165,
-      o2Tanks: 455,
-      ivFluids: 615,
-    },
+    resources: generateRealisticResources(200, 'good'), // Well-stocked overall
   },
   {
     id: '4',
@@ -66,13 +131,7 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     location: { lat: 31.5231, lng: 34.4415 },
     maxPatientsCapacity: 100,
     currentPatients: 95,
-    resources: {
-      insulin: 60,
-      antibiotics: 95,
-      anaesthesia: 45,
-      o2Tanks: 120,
-      ivFluids: 180,
-    },
+    resources: generateRealisticResources(100, 'mixed'), // Mixed scenario
   },
   {
     id: '5',
@@ -80,13 +139,7 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     location: { lat: 31.4273, lng: 34.3815 },
     maxPatientsCapacity: 130,
     currentPatients: 115,
-    resources: {
-      insulin: 210,
-      antibiotics: 275,
-      anaesthesia: 110,
-      o2Tanks: 310,
-      ivFluids: 425,
-    },
+    resources: generateRealisticResources(130, 'warning'), // Mostly warning level
   },
   {
     id: '6',
@@ -94,13 +147,7 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     location: { lat: 31.5444, lng: 34.5103 },
     maxPatientsCapacity: 90,
     currentPatients: 78,
-    resources: {
-      insulin: 25,
-      antibiotics: 45,
-      anaesthesia: 20,
-      o2Tanks: 65,
-      ivFluids: 95,
-    },
+    resources: generateRealisticResources(90, 'mixed'), // Mixed - some critical items
   },
   {
     id: '7',
@@ -108,13 +155,7 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     location: { lat: 31.4658, lng: 34.4221 },
     maxPatientsCapacity: 110,
     currentPatients: 102,
-    resources: {
-      insulin: 175,
-      antibiotics: 230,
-      anaesthesia: 92,
-      o2Tanks: 255,
-      ivFluids: 350,
-    },
+    resources: generateRealisticResources(110, 'good'), // Well-stocked
   },
   {
     id: '8',
@@ -122,42 +163,191 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     location: { lat: 31.4186, lng: 34.3672 },
     maxPatientsCapacity: 140,
     currentPatients: 125,
-    resources: {
-      insulin: 90,
-      antibiotics: 150,
-      anaesthesia: 65,
-      o2Tanks: 180,
-      ivFluids: 250,
-    },
+    resources: generateRealisticResources(140, 'mixed'), // Mixed scenario
   },
 ];
 
-export const mockMedicalCenters: MedicalCenter[] = rawCenters.map(center => ({
-  ...center,
-  status: calculateStatus(center),
-}));
-
-export const ministryWarehouse = {
-  insulin: 5000,
-  antibiotics: 7500,
-  anaesthesia: 3000,
-  o2Tanks: 8500,
-  ivFluids: 12000,
-};
-
-// Mock data for supply duration (days remaining) for each hospital
-// This represents how many days each supply will last based on current usage
-export const getSupplyDuration = (centerId: string): ResourceLevel => {
-  // Generate consistent but varied data based on center ID
-  const seed = parseInt(centerId) || 1;
-  const baseDays = [12, 8, 15, 6, 20, 4, 18, 10];
-  const variation = (seed % 5) - 2;
+export const mockMedicalCenters: MedicalCenter[] = rawCenters.map((center, index) => {
+  // Generate realistic last updated times (varying from 5 minutes to 4 hours ago)
+  const now = new Date();
+  const minutesAgo = 5 + (index * 23) % 235; // Varies between 5-240 minutes
+  const lastUpdated = new Date(now.getTime() - minutesAgo * 60 * 1000);
   
   return {
-    insulin: Math.max(1, baseDays[seed % 8] + variation),
-    antibiotics: Math.max(1, baseDays[(seed + 1) % 8] + variation),
-    anaesthesia: Math.max(1, baseDays[(seed + 2) % 8] + variation),
-    o2Tanks: Math.max(1, baseDays[(seed + 3) % 8] + variation),
-    ivFluids: Math.max(1, baseDays[(seed + 4) % 8] + variation),
+    ...center,
+    status: calculateStatus(center),
+    lastUpdated,
   };
+});
+
+export const ministryWarehouse = {
+  insulin: 4873,
+  antibiotics: 7624,
+  anaesthesia: 3127,
+  o2Tanks: 8439,
+  ivFluids: 11856,
+};
+
+// Calculate supply duration (days remaining) based on actual resource levels
+// This is consistent with the resource status calculation
+export const getSupplyDuration = (center: MedicalCenter): ResourceLevel => {
+  const required = center.maxPatientsCapacity;
+  const dailyUsageRate = 0.033; // Approximately 1/30th per day (30 days supply = 100%)
+  
+  const calculateDays = (key: keyof typeof RESOURCE_RATIOS, currentValue: number): number => {
+    const ratio = RESOURCE_RATIOS[key];
+    const needed = required * ratio;
+    const percentage = (currentValue / needed) * 100;
+    
+    // Calculate days based on percentage and daily usage
+    // If at 100%, that's 30 days. Scale accordingly
+    const days = (percentage / 100) * 30;
+    
+    // Add some realistic variation based on actual usage patterns
+    // Critical resources (< 30%) have less days, good resources have more
+    if (percentage < 30) {
+      // Critical: 1-9 days
+      return Math.max(1, Math.min(9, days * 0.8 + Math.random() * 2));
+    } else if (percentage < 70) {
+      // Warning: 9-21 days
+      return Math.max(9, Math.min(21, days * 0.9 + Math.random() * 3));
+    } else {
+      // Good: 21+ days
+      return Math.max(21, days * 1.1 + Math.random() * 10);
+    }
+  };
+  
+  return {
+    insulin: Math.round(calculateDays('insulin', center.resources.insulin)),
+    antibiotics: Math.round(calculateDays('antibiotics', center.resources.antibiotics)),
+    anaesthesia: Math.round(calculateDays('anaesthesia', center.resources.anaesthesia)),
+    o2Tanks: Math.round(calculateDays('o2Tanks', center.resources.o2Tanks)),
+    ivFluids: Math.round(calculateDays('ivFluids', center.resources.ivFluids)),
+  };
+};
+
+// Mock data for active deliveries (in transit)
+// Warning and critical hospitals should have deliveries
+export const getActiveDeliveries = (hospital: MedicalCenter): DeliveryTracking | null => {
+  // Warning and critical hospitals should have deliveries in transit
+  // Good hospitals might have some too, but less likely
+  const hasDelivery = 
+    hospital.status === 'critical' || 
+    hospital.status === 'warning' ||
+    (hospital.status === 'good' && parseInt(hospital.id) % 4 === 0);
+  
+  if (!hasDelivery) return null;
+
+  const now = new Date();
+  const hospitalId = hospital.id;
+  
+  // Critical hospitals get faster delivery (1-2 days), warning get 2-4 days
+  const daysUntilArrival = hospital.status === 'critical' 
+    ? 1 + (parseInt(hospitalId) % 2)
+    : 2 + (parseInt(hospitalId) % 3);
+  
+  const estimatedArrival = new Date(now);
+  estimatedArrival.setDate(estimatedArrival.getDate() + daysUntilArrival);
+  
+  const dispatchedDate = new Date(now);
+  dispatchedDate.setDate(dispatchedDate.getDate() - (parseInt(hospitalId) % 2));
+  
+  // Status depends on urgency - critical hospitals more likely to be "out for delivery"
+  const statuses: DeliveryTracking['status'][] = 
+    hospital.status === 'critical' 
+      ? ['out_for_delivery', 'in_transit']
+      : ['preparing', 'in_transit', 'out_for_delivery'];
+  const status = statuses[parseInt(hospitalId) % statuses.length];
+  
+  const locations = [
+    'Central Warehouse - Gaza City',
+    'Distribution Center - Khan Yunis',
+    'En route to hospital',
+    'Near hospital - Final delivery',
+  ];
+
+  // Calculate resupply amounts - prioritize critical resources, bring to adequate levels
+  const required = hospital.maxPatientsCapacity;
+  const resourceStatuses = getResourceStatus(hospital);
+  
+  const calculateResupply = (key: keyof typeof RESOURCE_RATIOS) => {
+    const ratio = RESOURCE_RATIOS[key];
+    const needed = required * ratio;
+    const current = hospital.resources[key];
+    const percentage = (current / needed) * 100;
+    
+    // Prioritize based on status:
+    // Critical: Bring to 80% (high priority)
+    // Warning: Bring to 70% (medium priority)
+    // Good: Bring to 75% (maintain good levels, but less urgent)
+    let targetPercentage = 75;
+    if (resourceStatuses.critical.includes(key)) {
+      targetPercentage = 80; // Critical resources get more
+    } else if (resourceStatuses.warning.includes(key)) {
+      targetPercentage = 70; // Warning resources get enough to be safe
+    }
+    
+    const target = needed * (targetPercentage / 100);
+    const amount = Math.max(0, Math.ceil(target - current));
+    
+    // Don't send delivery if already well-stocked (good resources)
+    if (resourceStatuses.good.includes(key) && percentage >= 75) {
+      return 0; // Good resources don't need delivery
+    }
+    
+    return amount;
+  };
+
+  return {
+    id: `delivery-${hospitalId}-${Date.now()}`,
+    hospitalId,
+    status,
+    estimatedArrival,
+    currentLocation: status === 'out_for_delivery' ? locations[3] : locations[parseInt(hospitalId) % 3],
+    trackingNumber: `MOH-${hospitalId}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+    resources: {
+      insulin: calculateResupply('insulin'),
+      antibiotics: calculateResupply('antibiotics'),
+      anaesthesia: calculateResupply('anaesthesia'),
+      o2Tanks: calculateResupply('o2Tanks'),
+      ivFluids: calculateResupply('ivFluids'),
+    },
+    dispatchedDate,
+  };
+};
+
+// Mock data for past deliveries
+export const getPastDeliveries = (hospitalId: string): PastDelivery[] => {
+  const deliveries: PastDelivery[] = [];
+  const now = new Date();
+  
+  // Generate 5-8 past deliveries per hospital
+  const count = 5 + (parseInt(hospitalId) % 4);
+  
+  for (let i = 0; i < count; i++) {
+    const deliveryDate = new Date(now);
+    deliveryDate.setDate(deliveryDate.getDate() - (i * 7 + Math.floor(Math.random() * 3)));
+    
+    // Mix of automatic and manual orders (roughly 60% automatic, 40% manual)
+    const orderType: 'automatic' | 'manual' = Math.random() > 0.4 ? 'automatic' : 'manual';
+    
+    deliveries.push({
+      id: `past-${hospitalId}-${i}`,
+      hospitalId,
+      deliveryDate,
+      resources: {
+        insulin: 100 + Math.floor(Math.random() * 200),
+        antibiotics: 150 + Math.floor(Math.random() * 250),
+        anaesthesia: 60 + Math.floor(Math.random() * 120),
+        o2Tanks: 200 + Math.floor(Math.random() * 300),
+        ivFluids: 300 + Math.floor(Math.random() * 400),
+      },
+      trackingNumber: `MOH-${hospitalId}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+      status: Math.random() > 0.1 ? 'delivered' : 'cancelled',
+      orderType,
+    });
+  }
+  
+  // Sort by date, most recent first
+  return deliveries.sort((a, b) => b.deliveryDate.getTime() - a.deliveryDate.getTime());
 };

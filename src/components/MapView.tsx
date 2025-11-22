@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { MedicalCenter, RESOURCE_NAMES } from '@/types/medical';
+import { MedicalCenter, RESOURCE_NAMES, getResourceStatus } from '@/types/medical';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface MapViewProps {
@@ -44,14 +44,36 @@ const MapView = ({ centers }: MapViewProps) => {
                 </div>
                 <div className="pt-2 border-t">
                   <p className="font-semibold mb-1 text-muted-foreground">Resources:</p>
-                  {Object.entries(center.resources).map(([key, value]) => (
-                    <div key={key} className="flex justify-between">
-                      <span className="text-muted-foreground">
-                        {RESOURCE_NAMES[key as keyof typeof RESOURCE_NAMES]}:
-                      </span>
-                      <span className="font-medium">{value}</span>
-                    </div>
-                  ))}
+                  {(() => {
+                    const resourceStatuses = getResourceStatus(center);
+                    return Object.entries(center.resources).map(([key, value]) => {
+                      // Each resource shows its own status color
+                      let textColor = 'text-muted-foreground';
+                      let valueColor = 'font-medium';
+                      
+                      if (resourceStatuses.critical.includes(key)) {
+                        textColor = 'text-destructive font-semibold';
+                        valueColor = 'font-bold text-destructive';
+                      } else if (resourceStatuses.warning.includes(key)) {
+                        textColor = 'text-warning font-semibold';
+                        valueColor = 'font-bold text-warning';
+                      } else if (resourceStatuses.good.includes(key)) {
+                        textColor = 'text-success font-semibold';
+                        valueColor = 'font-bold text-success';
+                      }
+                      
+                      return (
+                        <div key={key} className="flex justify-between">
+                          <span className={textColor}>
+                            {RESOURCE_NAMES[key as keyof typeof RESOURCE_NAMES]}:
+                          </span>
+                          <span className={valueColor}>
+                            {value}
+                          </span>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </CardContent>
             </Card>

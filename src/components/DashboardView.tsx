@@ -1,6 +1,7 @@
 import { MedicalCenter, RESOURCE_NAMES } from '@/types/medical';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ministryWarehouse } from '@/data/mockData';
+import HospitalMap from '@/components/HospitalMap';
 
 interface DashboardViewProps {
   centers: MedicalCenter[];
@@ -54,6 +55,19 @@ const DashboardView = ({ centers }: DashboardViewProps) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Interactive Map */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Hospital Locations Map</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Click on markers to view hospital details. Colors indicate status: Red (Critical), Yellow (Warning), Green (Good)
+          </p>
+        </CardHeader>
+        <CardContent>
+          <HospitalMap centers={centers} />
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>

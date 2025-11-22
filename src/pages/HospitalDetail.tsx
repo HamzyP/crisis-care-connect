@@ -1,14 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { mockMedicalCenters, getSupplyDuration, ministryWarehouse } from '@/data/mockData';
-import { RESOURCE_NAMES } from '@/types/medical';
+import { mockMedicalCenters, getSupplyDuration, ministryWarehouse, getActiveDeliveries } from '@/data/mockData';
+import { RESOURCE_NAMES, getResourceStatus } from '@/types/medical';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts';
-import { ArrowLeft, Package, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Package, AlertTriangle, Truck, CheckCircle2, Clock, History } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import ThemeToggle from '@/components/ThemeToggle';
 import { Activity } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 const HospitalDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,19 +32,76 @@ const HospitalDetail = () => {
     );
   }
 
-  const supplyDuration = getSupplyDuration(hospital.id);
+  const supplyDuration = getSupplyDuration(hospital);
+  const activeDelivery = getActiveDeliveries(hospital);
+  const resourceStatuses = getResourceStatus(hospital);
   
-  // Prepare chart data
-  const chartData = Object.entries(supplyDuration).map(([key, days]) => ({
-    name: RESOURCE_NAMES[key as keyof typeof RESOURCE_NAMES],
-    days,
-    key,
-  }));
+  // Prepare chart data - use same data source for consistency
+  const chartData = Object.entries(supplyDuration).map(([key, days]) => {
+    // Determine color based on resource status (consistent with top overview)
+    let color = 'hsl(var(--success))';
+    if (resourceStatuses.critical.includes(key)) {
+      color = 'hsl(var(--destructive))';
+    } else if (resourceStatuses.warning.includes(key)) {
+      color = 'hsl(var(--warning))';
+    }
+    
+    return {
+      name: RESOURCE_NAMES[key as keyof typeof RESOURCE_NAMES],
+      days,
+      key,
+      color,
+    };
+  });
 
-  const getStatusColor = (days: number) => {
-    if (days <= 3) return 'hsl(var(--destructive))';
-    if (days <= 7) return 'hsl(var(--warning))';
+  const getStatusColor = (resourceKey: string) => {
+    // Use resource status for color, not days
+    if (resourceStatuses.critical.includes(resourceKey)) {
+      return 'hsl(var(--destructive))';
+    }
+    if (resourceStatuses.warning.includes(resourceKey)) {
+      return 'hsl(var(--warning))';
+    }
     return 'hsl(var(--success))';
+  };
+
+  // Get resource status class and styling - each resource shows its own color
+  const getResourceStatusInfo = (resourceKey: string) => {
+    // Each resource shows its own status color, regardless of hospital status
+    if (resourceStatuses.critical.includes(resourceKey)) {
+      return {
+        isHighlighted: true,
+        className: 'bg-destructive/10 border-2 border-destructive',
+        textClassName: 'text-destructive font-semibold',
+        valueClassName: 'text-destructive',
+        daysClassName: 'text-destructive font-medium',
+      };
+    }
+    if (resourceStatuses.warning.includes(resourceKey)) {
+      return {
+        isHighlighted: true,
+        className: 'bg-warning/10 border-2 border-warning',
+        textClassName: 'text-warning font-semibold',
+        valueClassName: 'text-warning',
+        daysClassName: 'text-warning font-medium',
+      };
+    }
+    if (resourceStatuses.good.includes(resourceKey)) {
+      return {
+        isHighlighted: true,
+        className: 'bg-success/10 border-2 border-success',
+        textClassName: 'text-success font-semibold',
+        valueClassName: 'text-success',
+        daysClassName: 'text-success font-medium',
+      };
+    }
+    return {
+      isHighlighted: false,
+      className: '',
+      textClassName: 'text-muted-foreground',
+      valueClassName: '',
+      daysClassName: 'text-muted-foreground',
+    };
   };
 
   const handleResupply = () => {
@@ -61,8 +119,8 @@ const HospitalDetail = () => {
 
     if (canResupply) {
       toast({
-        title: 'Resupply Request Submitted',
-        description: `Resupply order has been sent to Ministry of Health warehouses for ${hospital.name}.`,
+        title: 'Resupply Dispatched',
+        description: `Resupply order has been sent from Ministry of Health warehouses to ${hospital.name}.`,
       });
     } else {
       toast({
@@ -133,20 +191,235 @@ const HospitalDetail = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {Object.entries(hospital.resources).map(([key, value]) => (
-                  <div key={key} className="space-y-1">
-                    <p className="text-sm text-muted-foreground">
-                      {RESOURCE_NAMES[key as keyof typeof RESOURCE_NAMES]}
-                    </p>
-                    <p className="text-2xl font-bold">{value}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {supplyDuration[key as keyof typeof supplyDuration]} days remaining
-                    </p>
-                  </div>
-                ))}
+                {Object.entries(hospital.resources).map(([key, value]) => {
+                  const statusInfo = getResourceStatusInfo(key);
+                  return (
+                    <div 
+                      key={key} 
+                      className={`space-y-1 p-3 rounded-lg transition-colors ${statusInfo.className}`}
+                    >
+                      <p className={`text-sm ${statusInfo.textClassName}`}>
+                        {RESOURCE_NAMES[key as keyof typeof RESOURCE_NAMES]}
+                      </p>
+                      <p className={`text-2xl font-bold ${statusInfo.valueClassName}`}>
+                        {value}
+                      </p>
+                      <p className={`text-xs ${statusInfo.daysClassName}`}>
+                        {supplyDuration[key as keyof typeof supplyDuration]} days remaining
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
+
+          {/* Send Resupply Button - Moved Higher */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Ministry of Health Resupply
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Send resupply from Ministry of Health warehouses to bring all supplies to 30 days worth
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                <Button onClick={handleResupply} size="lg" className="w-full sm:w-auto">
+                  <Package className="mr-2 h-4 w-4" />
+                  Send Resupply
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/hospital/${hospital.id}/deliveries`)}
+                  className="w-full sm:w-auto"
+                >
+                  <History className="mr-2 h-4 w-4" />
+                  View Past Deliveries
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Active Delivery Tracking */}
+          {activeDelivery && (
+            <Card className="border-l-4 border-l-primary">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Truck className="h-5 w-5" />
+                    Delivery In Transit
+                  </CardTitle>
+                  <Badge variant={activeDelivery.status === 'out_for_delivery' ? 'default' : 'secondary'}>
+                    {activeDelivery.status === 'preparing' && 'Preparing'}
+                    {activeDelivery.status === 'in_transit' && 'In Transit'}
+                    {activeDelivery.status === 'out_for_delivery' && 'Out for Delivery'}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Tracking Number</p>
+                      <p className="font-mono font-semibold">{activeDelivery.trackingNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Estimated Arrival</p>
+                      <p className="font-semibold">
+                        {activeDelivery.estimatedArrival.toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                    {activeDelivery.currentLocation && (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Current Location</p>
+                        <p className="font-medium flex items-center gap-2">
+                          <Truck className="h-4 w-4" />
+                          {activeDelivery.currentLocation}
+                        </p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Dispatched Date</p>
+                      <p className="font-medium">
+                        {activeDelivery.dispatchedDate.toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Delivery Progress Steps */}
+                  <div className="pt-4 border-t">
+                    <p className="text-sm font-semibold mb-3">Delivery Status</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                          activeDelivery.status === 'preparing' || activeDelivery.status === 'in_transit' || activeDelivery.status === 'out_for_delivery'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          <CheckCircle2 className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1">
+                          <p className={`text-sm ${activeDelivery.status !== 'preparing' ? 'font-medium' : ''}`}>
+                            Order Prepared
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {activeDelivery.dispatchedDate.toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                          activeDelivery.status === 'in_transit' || activeDelivery.status === 'out_for_delivery'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {activeDelivery.status === 'in_transit' || activeDelivery.status === 'out_for_delivery' ? (
+                            <CheckCircle2 className="h-4 w-4" />
+                          ) : (
+                            <Clock className="h-4 w-4" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className={`text-sm ${activeDelivery.status === 'in_transit' || activeDelivery.status === 'out_for_delivery' ? 'font-medium' : ''}`}>
+                            In Transit
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {activeDelivery.currentLocation || 'En route'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                          activeDelivery.status === 'out_for_delivery'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {activeDelivery.status === 'out_for_delivery' ? (
+                            <Truck className="h-4 w-4" />
+                          ) : (
+                            <Clock className="h-4 w-4" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className={`text-sm ${activeDelivery.status === 'out_for_delivery' ? 'font-medium' : ''}`}>
+                            Out for Delivery
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Arriving {activeDelivery.estimatedArrival.toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Resources in Delivery */}
+                  <div className="pt-4 border-t">
+                    <p className="text-sm font-semibold mb-2">Resources in This Delivery</p>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                      {Object.entries(activeDelivery.resources).map(([key, value]) => {
+                        // Color-code based on resource status (same as top overview)
+                        const isCritical = resourceStatuses.critical.includes(key);
+                        const isWarning = resourceStatuses.warning.includes(key);
+                        const isGood = resourceStatuses.good.includes(key);
+                        
+                        // Determine styling based on status
+                        let bgColor = 'bg-muted';
+                        let textColor = 'text-muted-foreground';
+                        let valueColor = '';
+                        let borderColor = '';
+                        
+                        if (isCritical) {
+                          bgColor = 'bg-destructive/10';
+                          textColor = 'text-destructive';
+                          valueColor = 'text-destructive';
+                          borderColor = 'border-2 border-destructive';
+                        } else if (isWarning) {
+                          bgColor = 'bg-warning/10';
+                          textColor = 'text-warning';
+                          valueColor = 'text-warning';
+                          borderColor = 'border-2 border-warning';
+                        } else if (isGood && value > 0) {
+                          bgColor = 'bg-success/10';
+                          textColor = 'text-success';
+                          valueColor = 'text-success';
+                          borderColor = 'border-2 border-success';
+                        }
+                        
+                        return (
+                          <div 
+                            key={key} 
+                            className={`text-center p-2 rounded-lg ${bgColor} ${borderColor} ${value === 0 ? 'opacity-50' : ''}`}
+                          >
+                            <p className={`text-xs ${textColor} ${isCritical || isWarning ? 'font-semibold' : ''}`}>
+                              {RESOURCE_NAMES[key as keyof typeof RESOURCE_NAMES]}
+                            </p>
+                            <p className={`text-lg font-bold ${valueColor || ''}`}>
+                              {value}
+                            </p>
+                            {value === 0 && (
+                              <p className="text-xs text-muted-foreground mt-1">Not needed</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Supply Duration Chart */}
           <Card>
@@ -172,7 +445,7 @@ const HospitalDetail = () => {
                       {chartData.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={getStatusColor(entry.days)}
+                          fill={getStatusColor(entry.key)}
                         />
                       ))}
                     </Bar>
@@ -186,8 +459,9 @@ const HospitalDetail = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {chartData.map((item) => {
               const days = item.days;
-              const isCritical = days <= 3;
-              const isWarning = days <= 7 && days > 3;
+              const isCritical = resourceStatuses.critical.includes(item.key);
+              const isWarning = resourceStatuses.warning.includes(item.key);
+              const isGood = resourceStatuses.good.includes(item.key);
               
               return (
                 <Card
@@ -202,19 +476,29 @@ const HospitalDetail = () => {
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm">{item.name}</CardTitle>
+                      <CardTitle className={`text-sm ${
+                        isCritical ? 'text-destructive' : isWarning ? 'text-warning' : 'text-success'
+                      }`}>
+                        {item.name}
+                      </CardTitle>
                       {isCritical && <AlertTriangle className="h-4 w-4 text-destructive" />}
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
                       <div>
-                        <p className="text-3xl font-bold">{days}</p>
+                        <p className={`text-3xl font-bold ${
+                          isCritical ? 'text-destructive' : isWarning ? 'text-warning' : 'text-success'
+                        }`}>
+                          {days}
+                        </p>
                         <p className="text-xs text-muted-foreground">days remaining</p>
                       </div>
                       <div className="pt-2 border-t">
                         <p className="text-xs text-muted-foreground">Current Stock</p>
-                        <p className="text-lg font-semibold">
+                        <p className={`text-lg font-semibold ${
+                          isCritical ? 'text-destructive' : isWarning ? 'text-warning' : 'text-success'
+                        }`}>
                           {hospital.resources[item.key as keyof typeof hospital.resources]}
                         </p>
                       </div>
@@ -224,25 +508,6 @@ const HospitalDetail = () => {
               );
             })}
           </div>
-
-          {/* Resupply Button */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Ministry of Health Resupply
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Request resupply from Ministry of Health warehouses to bring all supplies to 30 days worth
-              </p>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={handleResupply} size="lg" className="w-full md:w-auto">
-                <Package className="mr-2 h-4 w-4" />
-                Request Resupply
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       </main>
     </div>
