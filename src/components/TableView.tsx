@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MedicalCenter, RESOURCE_NAMES } from '@/types/medical';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ const statusColors = {
 } as const;
 
 const TableView = ({ centers }: TableViewProps) => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
@@ -126,7 +128,11 @@ const TableView = ({ centers }: TableViewProps) => {
           </TableHeader>
           <TableBody>
             {filteredAndSortedCenters.map((center) => (
-              <TableRow key={center.id}>
+              <TableRow
+                key={center.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => navigate(`/hospital/${center.id}`)}
+              >
                 <TableCell className="font-medium">{center.name}</TableCell>
                 <TableCell>{center.currentPatients}/{center.maxPatientsCapacity}</TableCell>
                 <TableCell>

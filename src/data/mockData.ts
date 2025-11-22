@@ -1,4 +1,4 @@
-import { MedicalCenter, RESOURCE_RATIOS } from '@/types/medical';
+import { MedicalCenter, RESOURCE_RATIOS, ResourceLevel } from '@/types/medical';
 
 const calculateStatus = (center: Omit<MedicalCenter, 'status'>): MedicalCenter['status'] => {
   const required = center.maxPatientsCapacity;
@@ -143,4 +143,21 @@ export const ministryWarehouse = {
   anaesthesia: 3000,
   o2Tanks: 8500,
   ivFluids: 12000,
+};
+
+// Mock data for supply duration (days remaining) for each hospital
+// This represents how many days each supply will last based on current usage
+export const getSupplyDuration = (centerId: string): ResourceLevel => {
+  // Generate consistent but varied data based on center ID
+  const seed = parseInt(centerId) || 1;
+  const baseDays = [12, 8, 15, 6, 20, 4, 18, 10];
+  const variation = (seed % 5) - 2;
+  
+  return {
+    insulin: Math.max(1, baseDays[seed % 8] + variation),
+    antibiotics: Math.max(1, baseDays[(seed + 1) % 8] + variation),
+    anaesthesia: Math.max(1, baseDays[(seed + 2) % 8] + variation),
+    o2Tanks: Math.max(1, baseDays[(seed + 3) % 8] + variation),
+    ivFluids: Math.max(1, baseDays[(seed + 4) % 8] + variation),
+  };
 };

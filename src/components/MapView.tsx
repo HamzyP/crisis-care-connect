@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { MedicalCenter, RESOURCE_NAMES } from '@/types/medical';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -12,6 +13,8 @@ const statusColors = {
 };
 
 const MapView = ({ centers }: MapViewProps) => {
+  const navigate = useNavigate();
+
   return (
     <div className="h-full w-full rounded-lg overflow-hidden border border-border bg-muted p-8">
       <div className="relative w-full h-full bg-card rounded-lg p-4">
@@ -21,6 +24,7 @@ const MapView = ({ centers }: MapViewProps) => {
               key={center.id}
               className="h-fit cursor-pointer hover:shadow-lg transition-shadow"
               style={{ borderLeft: `4px solid ${statusColors[center.status]}` }}
+              onClick={() => navigate(`/hospital/${center.id}`)}
             >
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
