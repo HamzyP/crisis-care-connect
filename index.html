@@ -7,6 +7,74 @@
     <title>MedStock Crisis Manager</title>
     <meta name="description" content="MedStock Crisis Manager - Ministry of Health Logistics Tracking" />
     <meta name="author" content="Ministry of Health" />
+    
+    <!-- Tailwind CDN for Hospital View App -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Configure Tailwind for hospital view app
+      if (window.tailwind) {
+        window.tailwind.config = {
+          darkMode: 'class',
+          theme: {
+            extend: {
+              fontFamily: {
+                sans: ['Lato', 'sans-serif'],
+                serif: ['EB Garamond', 'serif'],
+                mono: ['Fira Code', 'monospace'],
+              },
+              colors: {
+                primary: {
+                  DEFAULT: 'hsl(243, 75%, 58%)',
+                  light: 'hsl(234, 89%, 73%)',
+                },
+                destructive: 'hsl(0, 72%, 50%)',
+                warning: 'hsl(45, 93%, 58%)',
+                success: 'hsl(142, 71%, 45%)',
+                background: {
+                  light: 'hsl(0, 0%, 96%)',
+                  dark: 'hsl(0, 0%, 9%)',
+                },
+                card: {
+                  light: 'hsl(0, 0%, 98%)',
+                  dark: 'hsl(0, 0%, 14%)',
+                },
+                border: {
+                  light: 'hsl(0, 0%, 83%)',
+                  dark: 'hsl(0, 0%, 20%)',
+                },
+              },
+              borderRadius: {
+                DEFAULT: '1.25rem',
+              },
+              boxShadow: {
+                'subtle': '0 2px 8px rgba(0, 0, 0, 0.08)',
+                'card': '0 4px 12px rgba(0, 0, 0, 0.1)',
+                'layered': '0 2px 4px rgba(0, 0, 0, 0.05), 0 4px 8px rgba(0, 0, 0, 0.05)',
+              },
+              animation: {
+                'fade-in': 'fadeIn 0.6s ease-out',
+                'slide-up': 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+                'float': 'float 6s ease-in-out infinite',
+              },
+              keyframes: {
+                fadeIn: {
+                  '0%': { opacity: '0', transform: 'translateY(10px)' },
+                  '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+                slideUp: {
+                  '0%': { transform: 'translateY(30px)', opacity: '0' },
+                  '100%': { transform: 'translateY(0)', opacity: '1' },
+                },
+                float: {
+                  '0%, 100%': { transform: 'translateY(0)' },
+                  '50%': { transform: 'translateY(-10px)' },
+                }
+              }
+            }
+          }
+        };
+      }
+    </script>
 
     <meta property="og:title" content="e4e0047a-77e1-481d-b0f0-92622b160975" />
     <meta property="og:description" content="Lovable Generated Project" />

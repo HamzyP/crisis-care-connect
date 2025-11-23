@@ -24,7 +24,7 @@ const MapView = ({ centers }: MapViewProps) => {
               key={center.id}
               className="h-fit cursor-pointer hover:shadow-lg transition-shadow"
               style={{ borderLeft: `4px solid ${statusColors[center.status]}` }}
-              onClick={() => navigate(`/hospital/${center.id}`)}
+              onClick={() => navigate(`/ministryofhealth/hospital/${center.id}`)}
             >
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
@@ -75,6 +75,24 @@ const MapView = ({ centers }: MapViewProps) => {
                     });
                   })()}
                 </div>
+                {center.departments && center.departments.length > 0 && (
+                  <div className="pt-2 border-t mt-2">
+                    <p className="font-semibold mb-1 text-muted-foreground">Staff:</p>
+                    <div className="space-y-1">
+                      {center.departments.slice(0, 3).map((dept) => (
+                        <div key={dept.id} className="flex justify-between text-xs">
+                          <span className="text-muted-foreground truncate mr-2">{dept.name}:</span>
+                          <span className="font-medium">{dept.specialistCount} {dept.specialistTitle}</span>
+                        </div>
+                      ))}
+                      {center.departments.length > 3 && (
+                        <p className="text-xs text-muted-foreground italic">
+                          +{center.departments.length - 3} more departments
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

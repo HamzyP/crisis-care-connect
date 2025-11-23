@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { mockMedicalCenters } from '@/data/mockData';
+import { useMedicalCenters } from '@/hooks/useMedicalCenters';
 import MapView from '@/components/MapView';
 import DashboardView from '@/components/DashboardView';
 import TableView from '@/components/TableView';
@@ -9,6 +9,7 @@ import { Activity } from 'lucide-react';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const { centers } = useMedicalCenters();
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,15 +35,15 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <DashboardView centers={mockMedicalCenters} />
+            <DashboardView centers={centers} />
           </TabsContent>
 
           <TabsContent value="map" className="h-[calc(100vh-200px)]">
-            <MapView centers={mockMedicalCenters} />
+            <MapView centers={centers} />
           </TabsContent>
 
           <TabsContent value="table">
-            <TableView centers={mockMedicalCenters} />
+            <TableView centers={centers} />
           </TabsContent>
         </Tabs>
       </main>

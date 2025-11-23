@@ -8,6 +8,13 @@ export interface ResourceLevel {
   ivFluids: number;
 }
 
+export interface Department {
+  id: string;
+  name: string;
+  specialistTitle: string; // e.g., 'Trauma Surgeons', 'Oncologists'
+  specialistCount: number;
+}
+
 export interface MedicalCenter {
   id: string;
   name: string;
@@ -20,6 +27,7 @@ export interface MedicalCenter {
   resources: ResourceLevel;
   status: ResourceStatus;
   lastUpdated: Date; // Timestamp of when data was last updated from hospital
+  departments?: Department[]; // Staff/department information
 }
 
 export const RESOURCE_RATIOS = {
@@ -27,7 +35,7 @@ export const RESOURCE_RATIOS = {
   antibiotics: 2.0,
   anaesthesia: 0.8,
   o2Tanks: 2.2,
-  ivFluids: 3.0,
+  ivFluids: 2.0, // Match hospital view STOCK_RATIOS[FLUIDS] = 2.0
 };
 
 export const RESOURCE_NAMES = {
@@ -39,7 +47,12 @@ export const RESOURCE_NAMES = {
 };
 
 // Utility function to get resource status for each resource
-export const getResourceStatus = (center: MedicalCenter): {
+// For Indonesian Hospital, uses days of supply (matching hospital view logic)
+// For other hospitals, uses percentage-based calculation
+export const getResourceStatus = (
+  center: MedicalCenter, 
+  dailyUsageRates?: ResourceLevel
+): {
   critical: string[];
   warning: string[];
   good: string[];
@@ -47,8 +60,45 @@ export const getResourceStatus = (center: MedicalCenter): {
   const critical: string[] = [];
   const warning: string[] = [];
   const good: string[] = [];
-  const required = center.maxPatientsCapacity;
   
+  // For Indonesian Hospital, use days of supply calculation (matches hospital view)
+  // This ensures consistent color coding between hospital view and ministry view
+  if (center.id === '5') {
+    // Try to get usage rates from parameter, or from localStorage
+    let usageRates = dailyUsageRates;
+    if (!usageRates) {
+      try {
+        const stored = localStorage.getItem('indonesian-hospital-sync');
+        if (stored) {
+          const syncedData = JSON.parse(stored);
+          usageRates = syncedData.dailyUsageRates;
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    
+    if (usageRates) {
+      Object.entries(center.resources).forEach(([key, value]) => {
+        const dailyUsage = usageRates![key as keyof ResourceLevel];
+        if (dailyUsage > 0) {
+          const daysSupply = value / dailyUsage;
+          // Match hospital view logic: critical < 2 days, warning < 5 days, good >= 5 days
+          if (daysSupply < 2) {
+            critical.push(key);
+          } else if (daysSupply < 5) {
+            warning.push(key);
+          } else {
+            good.push(key);
+          }
+        }
+      });
+      return { critical, warning, good };
+    }
+  }
+  
+  // For other hospitals, or if Indonesian Hospital doesn't have usage rates, use percentage-based calculation
+  const required = center.maxPatientsCapacity;
   Object.entries(center.resources).forEach(([key, value]) => {
     const ratio = RESOURCE_RATIOS[key as keyof typeof RESOURCE_RATIOS];
     const needed = required * ratio;

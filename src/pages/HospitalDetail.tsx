@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { mockMedicalCenters, getSupplyDuration, ministryWarehouse, getActiveDeliveries } from '@/data/mockData';
+import { useMedicalCenters } from '@/hooks/useMedicalCenters';
+import { getSupplyDuration, ministryWarehouse, getActiveDeliveries } from '@/data/mockData';
 import { RESOURCE_NAMES, getResourceStatus } from '@/types/medical';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,8 +15,9 @@ import { Badge } from '@/components/ui/badge';
 const HospitalDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { centers, indonesianHospitalUsageRates } = useMedicalCenters();
   
-  const hospital = mockMedicalCenters.find(center => center.id === id);
+  const hospital = centers.find(center => center.id === id);
   
   if (!hospital) {
     return (
@@ -23,7 +25,7 @@ const HospitalDetail = () => {
         <Card>
           <CardContent className="pt-6">
             <p className="text-center">Hospital not found</p>
-            <Button onClick={() => navigate('/')} className="mt-4 w-full">
+            <Button onClick={() => navigate('/ministryofhealth')} className="mt-4 w-full">
               Go Back
             </Button>
           </CardContent>
@@ -32,9 +34,9 @@ const HospitalDetail = () => {
     );
   }
 
-  const supplyDuration = getSupplyDuration(hospital);
+  const supplyDuration = getSupplyDuration(hospital, indonesianHospitalUsageRates);
   const activeDelivery = getActiveDeliveries(hospital);
-  const resourceStatuses = getResourceStatus(hospital);
+  const resourceStatuses = getResourceStatus(hospital, indonesianHospitalUsageRates);
   
   // Prepare chart data - use same data source for consistency
   const chartData = Object.entries(supplyDuration).map(([key, days]) => {
@@ -155,7 +157,7 @@ const HospitalDetail = () => {
       <main className="container mx-auto px-4 py-6">
         <Button
           variant="ghost"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/ministryofhealth')}
           className="mb-6"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -214,6 +216,43 @@ const HospitalDetail = () => {
             </CardContent>
           </Card>
 
+          {/* Staff & Departments */}
+          {hospital.departments && hospital.departments.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Staff & Departments
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Medical staff and department information
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {hospital.departments.map((dept) => (
+                    <div
+                      key={dept.id}
+                      className="p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                    >
+                      <h3 className="font-semibold text-lg mb-2">{dept.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">{dept.specialistTitle}:</span>
+                        <span className="text-lg font-bold text-primary">{dept.specialistCount}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold">Total Staff:</span>{' '}
+                    {hospital.departments.reduce((sum, dept) => sum + dept.specialistCount, 0)} specialists
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Send Resupply Button - Moved Higher */}
           <Card>
             <CardHeader>
@@ -233,7 +272,7 @@ const HospitalDetail = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => navigate(`/hospital/${hospital.id}/deliveries`)}
+                  onClick={() => navigate(`/ministryofhealth/hospital/${hospital.id}/deliveries`)}
                   className="w-full sm:w-auto"
                 >
                   <History className="mr-2 h-4 w-4" />

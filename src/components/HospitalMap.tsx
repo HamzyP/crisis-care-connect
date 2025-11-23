@@ -204,6 +204,25 @@ const HospitalMap = ({ centers }: HospitalMapProps) => {
                       </div>
                     </div>
                     
+                    {center.departments && center.departments.length > 0 && (
+                      <div className="pt-2 border-t mt-2">
+                        <p className="text-xs font-semibold mb-1 text-muted-foreground">Staff:</p>
+                        <div className="space-y-1">
+                          {center.departments.slice(0, 2).map((dept) => (
+                            <div key={dept.id} className="flex justify-between text-xs">
+                              <span className="text-muted-foreground truncate mr-2">{dept.name}:</span>
+                              <span className="font-medium">{dept.specialistCount}</span>
+                            </div>
+                          ))}
+                          {center.departments.length > 2 && (
+                            <p className="text-xs text-muted-foreground italic">
+                              +{center.departments.length - 2} more depts
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="pt-2 border-t">
                       <p className="text-xs text-muted-foreground">
                         Last updated: {formatTimeAgo(center.lastUpdated)}
@@ -211,7 +230,7 @@ const HospitalMap = ({ centers }: HospitalMapProps) => {
                     </div>
                     
                     <button
-                      onClick={() => navigate(`/hospital/${center.id}`)}
+                      onClick={() => navigate(`/ministryofhealth/hospital/${center.id}`)}
                       className="mt-3 w-full text-xs bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 rounded-md transition-colors"
                     >
                       View Full Details →

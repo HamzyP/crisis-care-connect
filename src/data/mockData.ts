@@ -1,6 +1,42 @@
-import { MedicalCenter, RESOURCE_RATIOS, ResourceLevel, DeliveryTracking, PastDelivery, getResourceStatus } from '@/types/medical';
+import { MedicalCenter, RESOURCE_RATIOS, ResourceLevel, DeliveryTracking, PastDelivery, getResourceStatus, Department } from '@/types/medical';
+import { getSyncedHospitalData } from '@/utils/hospitalSync';
 
-const calculateStatus = (center: Omit<MedicalCenter, 'status'>): MedicalCenter['status'] => {
+export const calculateStatus = (center: Omit<MedicalCenter, 'status'>, dailyUsageRates?: ResourceLevel): MedicalCenter['status'] => {
+  // For Indonesian Hospital, use days of supply calculation (matches hospital view)
+  if (center.id === '5') {
+    let usageRates = dailyUsageRates;
+    if (!usageRates) {
+      try {
+        const stored = localStorage.getItem('indonesian-hospital-sync');
+        if (stored) {
+          const syncedData = JSON.parse(stored);
+          usageRates = syncedData.dailyUsageRates;
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    
+    if (usageRates) {
+      // Use days of supply: critical < 2 days, warning < 5 days, good >= 5 days
+      const resourceStatuses = Object.entries(center.resources).map(([key, value]) => {
+        const dailyUsage = usageRates![key as keyof ResourceLevel];
+        if (dailyUsage > 0) {
+          const daysSupply = value / dailyUsage;
+          if (daysSupply < 2) return 'critical';
+          if (daysSupply < 5) return 'warning';
+          return 'good';
+        }
+        return 'good'; // Default if no usage rate
+      });
+      
+      if (resourceStatuses.includes('critical')) return 'critical';
+      if (resourceStatuses.includes('warning')) return 'warning';
+      return 'good';
+    }
+  }
+  
+  // For other hospitals, use percentage-based calculation
   const required = center.maxPatientsCapacity;
   const resourceStatuses = Object.entries(center.resources).map(([key, value]) => {
     const ratio = RESOURCE_RATIOS[key as keyof typeof RESOURCE_RATIOS];
@@ -100,7 +136,15 @@ const generateRealisticResources = (
   }
 };
 
-const rawCenters: Omit<MedicalCenter, 'status'>[] = [
+// Helper to create departments with staff
+const createDepartment = (id: string, name: string, specialistTitle: string, specialistCount: number): Department => ({
+  id,
+  name,
+  specialistTitle,
+  specialistCount,
+});
+
+export const rawCenters: Omit<MedicalCenter, 'status'>[] = [
   {
     id: '1',
     name: 'Al-Shifa Hospital',
@@ -108,6 +152,11 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     maxPatientsCapacity: 150,
     currentPatients: 142,
     resources: generateRealisticResources(150, 'mixed'), // Mixed - some good, some critical
+    departments: [
+      createDepartment('d1', 'Trauma & Emergency', 'Trauma Surgeons', 12),
+      createDepartment('d2', 'Critical Care Unit', 'ER Doctors', 10),
+      createDepartment('d3', 'Pediatrics', 'Pediatricians', 8),
+    ],
   },
   {
     id: '2',
@@ -116,6 +165,11 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     maxPatientsCapacity: 120,
     currentPatients: 98,
     resources: generateRealisticResources(120, 'mixed'), // Mixed - insulin critical, others vary
+    departments: [
+      createDepartment('d1', 'Trauma & Emergency', 'Trauma Surgeons', 10),
+      createDepartment('d2', 'Critical Care Unit', 'ER Doctors', 8),
+      createDepartment('d3', 'Pediatrics', 'Pediatricians', 6),
+    ],
   },
   {
     id: '3',
@@ -124,6 +178,11 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     maxPatientsCapacity: 200,
     currentPatients: 187,
     resources: generateRealisticResources(200, 'good'), // Well-stocked overall
+    departments: [
+      createDepartment('d1', 'Trauma & Emergency', 'Trauma Surgeons', 18),
+      createDepartment('d2', 'Critical Care Unit', 'ER Doctors', 15),
+      createDepartment('d3', 'Pediatrics', 'Pediatricians', 12),
+    ],
   },
   {
     id: '4',
@@ -132,6 +191,11 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     maxPatientsCapacity: 100,
     currentPatients: 95,
     resources: generateRealisticResources(100, 'mixed'), // Mixed scenario
+    departments: [
+      createDepartment('d1', 'Trauma & Emergency', 'Trauma Surgeons', 8),
+      createDepartment('d2', 'Critical Care Unit', 'ER Doctors', 6),
+      createDepartment('d3', 'Pediatrics', 'Pediatricians', 5),
+    ],
   },
   {
     id: '5',
@@ -140,6 +204,11 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     maxPatientsCapacity: 130,
     currentPatients: 115,
     resources: generateRealisticResources(130, 'warning'), // Mostly warning level
+    departments: [
+      createDepartment('d1', 'Trauma & Emergency', 'Trauma Surgeons', 15),
+      createDepartment('d2', 'Critical Care Unit', 'ER Doctors', 10),
+      createDepartment('d3', 'Pediatrics', 'Pediatricians', 6),
+    ],
   },
   {
     id: '6',
@@ -148,6 +217,11 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     maxPatientsCapacity: 90,
     currentPatients: 78,
     resources: generateRealisticResources(90, 'mixed'), // Mixed - some critical items
+    departments: [
+      createDepartment('d1', 'Trauma & Emergency', 'Trauma Surgeons', 7),
+      createDepartment('d2', 'Critical Care Unit', 'ER Doctors', 5),
+      createDepartment('d3', 'Pediatrics', 'Pediatricians', 4),
+    ],
   },
   {
     id: '7',
@@ -156,6 +230,11 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     maxPatientsCapacity: 110,
     currentPatients: 102,
     resources: generateRealisticResources(110, 'good'), // Well-stocked
+    departments: [
+      createDepartment('d1', 'Trauma & Emergency', 'Trauma Surgeons', 9),
+      createDepartment('d2', 'Critical Care Unit', 'ER Doctors', 7),
+      createDepartment('d3', 'Pediatrics', 'Pediatricians', 5),
+    ],
   },
   {
     id: '8',
@@ -164,10 +243,49 @@ const rawCenters: Omit<MedicalCenter, 'status'>[] = [
     maxPatientsCapacity: 140,
     currentPatients: 125,
     resources: generateRealisticResources(140, 'mixed'), // Mixed scenario
+    departments: [
+      createDepartment('d1', 'Trauma & Emergency', 'Trauma Surgeons', 11),
+      createDepartment('d2', 'Critical Care Unit', 'ER Doctors', 9),
+      createDepartment('d3', 'Pediatrics', 'Pediatricians', 7),
+    ],
   },
 ];
 
-export const mockMedicalCenters: MedicalCenter[] = rawCenters.map((center, index) => {
+// Helper function to merge synced data for Indonesian Hospital
+// NOTE: This function is only used by the old mockMedicalCenters export
+// The hook useMedicalCenters() has its own mergeSyncedData that properly handles Indonesian Hospital
+const mergeSyncedData = (center: Omit<MedicalCenter, 'status'>, index: number): MedicalCenter => {
+  // Check if this is Indonesian Hospital (id: '5')
+  if (center.id === '5') {
+    const syncedData = getSyncedHospitalData();
+    if (syncedData) {
+      // Merge synced data - ONLY use synced data, never mock data
+      return {
+        ...center,
+        resources: syncedData.resources,
+        currentPatients: syncedData.currentPatients,
+        maxPatientsCapacity: syncedData.maxPatientsCapacity,
+        departments: syncedData.departments,
+        status: calculateStatus({
+          ...center,
+          resources: syncedData.resources,
+          maxPatientsCapacity: syncedData.maxPatientsCapacity,
+        }),
+        lastUpdated: new Date(syncedData.lastUpdated),
+      };
+    }
+    // If no synced data, return a placeholder that will be filtered out
+    // This ensures Indonesian Hospital only appears with synced data
+    return {
+      ...center,
+      resources: { insulin: 0, antibiotics: 0, anaesthesia: 0, o2Tanks: 0, ivFluids: 0 },
+      currentPatients: 0,
+      maxPatientsCapacity: 0,
+      status: 'critical' as const,
+      lastUpdated: new Date(),
+    };
+  }
+  
   // Generate realistic last updated times (varying from 5 minutes to 4 hours ago)
   const now = new Date();
   const minutesAgo = 5 + (index * 23) % 235; // Varies between 5-240 minutes
@@ -178,7 +296,11 @@ export const mockMedicalCenters: MedicalCenter[] = rawCenters.map((center, index
     status: calculateStatus(center),
     lastUpdated,
   };
-});
+};
+
+export const mockMedicalCenters: MedicalCenter[] = rawCenters.map((center, index) => 
+  mergeSyncedData(center, index)
+);
 
 export const ministryWarehouse = {
   insulin: 4873,
@@ -188,41 +310,45 @@ export const ministryWarehouse = {
   ivFluids: 11856,
 };
 
-// Calculate supply duration (days remaining) based on actual resource levels
-// This is consistent with the resource status calculation
-export const getSupplyDuration = (center: MedicalCenter): ResourceLevel => {
-  const required = center.maxPatientsCapacity;
-  const dailyUsageRate = 0.033; // Approximately 1/30th per day (30 days supply = 100%)
-  
-  const calculateDays = (key: keyof typeof RESOURCE_RATIOS, currentValue: number): number => {
-    const ratio = RESOURCE_RATIOS[key];
-    const needed = required * ratio;
-    const percentage = (currentValue / needed) * 100;
-    
-    // Calculate days based on percentage and daily usage
-    // If at 100%, that's 30 days. Scale accordingly
-    const days = (percentage / 100) * 30;
-    
-    // Add some realistic variation based on actual usage patterns
-    // Critical resources (< 30%) have less days, good resources have more
-    if (percentage < 30) {
-      // Critical: 1-9 days
-      return Math.max(1, Math.min(9, days * 0.8 + Math.random() * 2));
-    } else if (percentage < 70) {
-      // Warning: 9-21 days
-      return Math.max(9, Math.min(21, days * 0.9 + Math.random() * 3));
-    } else {
-      // Good: 21+ days
-      return Math.max(21, days * 1.1 + Math.random() * 10);
+// Calculate supply duration (days remaining) based on actual resource levels and usage rates
+// For Indonesian Hospital, uses synced daily usage rates; for others, calculates from ratios
+export const getSupplyDuration = (center: MedicalCenter, dailyUsageRates?: ResourceLevel): ResourceLevel => {
+  const calculateDays = (key: keyof typeof RESOURCE_RATIOS, currentValue: number, dailyUsage: number): number => {
+    if (dailyUsage <= 0) {
+      // Fallback calculation if no usage rate available
+      const ratio = RESOURCE_RATIOS[key];
+      const needed = center.maxPatientsCapacity * ratio;
+      const percentage = (currentValue / needed) * 100;
+      // Simple deterministic calculation: 30 days at 100%
+      return Math.max(0, Math.round((percentage / 100) * 30));
     }
+    
+    // Calculate days based on actual usage rate: days = quantity / dailyUsage
+    const days = currentValue / dailyUsage;
+    return Math.max(0, Math.round(days * 10) / 10); // Round to 1 decimal place
   };
   
+  // For Indonesian Hospital, use synced daily usage rates
+  if (center.id === '5' && dailyUsageRates) {
+    return {
+      insulin: calculateDays('insulin', center.resources.insulin, dailyUsageRates.insulin),
+      antibiotics: calculateDays('antibiotics', center.resources.antibiotics, dailyUsageRates.antibiotics),
+      anaesthesia: calculateDays('anaesthesia', center.resources.anaesthesia, dailyUsageRates.anaesthesia),
+      o2Tanks: calculateDays('o2Tanks', center.resources.o2Tanks, dailyUsageRates.o2Tanks),
+      ivFluids: calculateDays('ivFluids', center.resources.ivFluids, dailyUsageRates.ivFluids),
+    };
+  }
+  
+  // For other hospitals, use fallback calculation
+  const required = center.maxPatientsCapacity;
+  const fallbackDailyUsage = required * 0.033; // Generic fallback
+  
   return {
-    insulin: Math.round(calculateDays('insulin', center.resources.insulin)),
-    antibiotics: Math.round(calculateDays('antibiotics', center.resources.antibiotics)),
-    anaesthesia: Math.round(calculateDays('anaesthesia', center.resources.anaesthesia)),
-    o2Tanks: Math.round(calculateDays('o2Tanks', center.resources.o2Tanks)),
-    ivFluids: Math.round(calculateDays('ivFluids', center.resources.ivFluids)),
+    insulin: calculateDays('insulin', center.resources.insulin, fallbackDailyUsage),
+    antibiotics: calculateDays('antibiotics', center.resources.antibiotics, fallbackDailyUsage),
+    anaesthesia: calculateDays('anaesthesia', center.resources.anaesthesia, fallbackDailyUsage),
+    o2Tanks: calculateDays('o2Tanks', center.resources.o2Tanks, fallbackDailyUsage),
+    ivFluids: calculateDays('ivFluids', center.resources.ivFluids, fallbackDailyUsage),
   };
 };
 

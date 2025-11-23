@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { mockMedicalCenters, getPastDeliveries } from '@/data/mockData';
+import { useMedicalCenters } from '@/hooks/useMedicalCenters';
+import { getPastDeliveries } from '@/data/mockData';
 import { RESOURCE_NAMES } from '@/types/medical';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,8 +13,9 @@ import { Badge } from '@/components/ui/badge';
 const PastDeliveries = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { centers } = useMedicalCenters();
   
-  const hospital = mockMedicalCenters.find(center => center.id === id);
+  const hospital = centers.find(center => center.id === id);
   
   if (!hospital) {
     return (
@@ -21,7 +23,7 @@ const PastDeliveries = () => {
         <Card>
           <CardContent className="pt-6">
             <p className="text-center">Hospital not found</p>
-            <Button onClick={() => navigate('/')} className="mt-4 w-full">
+            <Button onClick={() => navigate('/ministryofhealth')} className="mt-4 w-full">
               Go Back
             </Button>
           </CardContent>
@@ -50,7 +52,7 @@ const PastDeliveries = () => {
       <main className="container mx-auto px-4 py-6">
         <Button
           variant="ghost"
-          onClick={() => navigate(`/hospital/${hospital.id}`)}
+          onClick={() => navigate(`/ministryofhealth/hospital/${hospital.id}`)}
           className="mb-6"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />

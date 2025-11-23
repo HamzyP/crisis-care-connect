@@ -22,6 +22,13 @@ const DashboardView = ({ centers }: DashboardViewProps) => {
     { insulin: 0, antibiotics: 0, anaesthesia: 0, o2Tanks: 0, ivFluids: 0 }
   );
 
+  const totalStaff = centers.reduce((sum, center) => {
+    if (center.departments) {
+      return sum + center.departments.reduce((deptSum, dept) => deptSum + dept.specialistCount, 0);
+    }
+    return sum;
+  }, 0);
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -69,7 +76,7 @@ const DashboardView = ({ centers }: DashboardViewProps) => {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Hospital Resources Overview</CardTitle>
@@ -102,6 +109,36 @@ const DashboardView = ({ centers }: DashboardViewProps) => {
                   <span className="text-lg font-semibold">{value.toLocaleString()}</span>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Medical Staff</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <div className="text-4xl font-bold text-primary mb-2">{totalStaff}</div>
+                <p className="text-sm text-muted-foreground">Specialists across all hospitals</p>
+              </div>
+              <div className="pt-4 border-t">
+                <p className="text-xs text-muted-foreground mb-2">Breakdown by hospital:</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {centers.map((center) => {
+                    const hospitalStaff = center.departments
+                      ? center.departments.reduce((sum, dept) => sum + dept.specialistCount, 0)
+                      : 0;
+                    return hospitalStaff > 0 ? (
+                      <div key={center.id} className="flex justify-between text-xs">
+                        <span className="text-muted-foreground truncate">{center.name}:</span>
+                        <span className="font-medium">{hospitalStaff}</span>
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
